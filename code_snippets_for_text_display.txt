@@ -1,0 +1,54 @@
+# Flask route snippet (app.py) - broker_projects route excerpt
+@app.route('/broker/projects')
+def broker_projects():
+    if 'user_id' not in session or session.get('login_type') != 'broker':
+        flash('Access denied.')
+        return redirect(url_for('login'))
+    projects = Project.query.all()
+
+    extracted_images_folder = 'static/extracted_images'
+    image_data_dict = {}
+    text_content_dict = {}
+    if os.path.exists(extracted_images_folder):
+        for f in os.listdir(extracted_images_folder):
+            file_path = os.path.join(extracted_images_folder, f)
+            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                with open(file_path, "rb") as image_file:
+                    encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                    mime_type = "image/jpeg"
+                    if f.lower().endswith('.png'):
+                        mime_type = "image/png"
+                    elif f.lower().endswith('.gif'):
+                        mime_type = "image/gif"
+                    image_data_dict[f] = f"data:{mime_type};base64,{encoded_string}"
+            elif f.lower().endswith('.txt'):
+                with open(file_path, "r", encoding="utf-8") as text_file:
+                    text_content_dict[f] = text_file.read()
+
+    return render_template('projects.html', projects=projects, image_data_dict=image_data_dict, text_content_dict=text_content_dict)
+
+# Template snippet (projects.html) - displaying text content
+{% for i in range(count) %}
+    <div class="row mb-2">
+        <div class="col-md-6">
+            {# image display logic #}
+        </div>
+        <div class="col-md-6">
+            {% set txt_filename = text_paths[i] if i < text_paths|length else None %}
+            {% if txt_filename %}
+                {% set txt_basename = txt_filename.split('/')[-1].split('\\')[-1] %}
+                {% set txt_content = None %}
+                {% for key, content in text_content_dict.items() %}
+                    {% if key == txt_basename %}
+                        {% set txt_content = content %}
+                    {% endif %}
+                {% endfor %}
+                {% if txt_content %}
+                    <p>{{ txt_content }}</p>
+                {% else %}
+                    <p>{{ txt_basename }}</p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+{% endfor %}
